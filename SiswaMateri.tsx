@@ -1,0 +1,440 @@
+import React, { useState, useEffect, useRef } from 'react';
+import { Button } from '@/components/ui/button';
+import { renderFormattedMathText } from '@/components/ui/fraction';
+import { DocumentPreviewModal, DocumentPreviewItem } from '@/components/ui/DocumentPreviewModal';
+import { storageService } from '@/services/storageService';
+import { soundService } from '@/services/soundService';
+import {
+  BookOpen,
+  Sparkles,
+  CheckCircle2,
+  PieChart,
+  ArrowRight,
+  ArrowLeft,
+  FileText,
+  Download,
+  Lightbulb,
+  Image as ImageIcon,
+  Eye,
+  GraduationCap,
+  ChevronDown,
+  ChevronUp,
+  Check,
+  Layers,
+  ListOrdered
+} from 'lucide-react';
+import { Material } from '@/types';
+
+export const SiswaMateri: React.FC<{
+  onNavigate: (route: string) => void;
+}> = ({ onNavigate }) => {
+  const [activeTab, setActiveTab] = useState<number>(0);
+  const [materials, setMaterials] = useState<Material[]>(storageService.getState().materials || []);
+  const [previewItem, setPreviewItem] = useState<DocumentPreviewItem | null>(null);
+  const [isDropdownOpen, setIsDropdownOpen] = useState<boolean>(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const loadData = () => {
+      const state = storageService.getState();
+      setMaterials(state.materials || []);
+    };
+
+    loadData();
+    const unsub = storageService.subscribe(() => {
+      loadData();
+    });
+
+    const user = storageService.getCurrentSessionUser();
+    if (user && user.role === 'siswa') {
+      storageService.update(draft => {
+        const u = draft.users.find(usr => usr.id === user.id);
+        if (u) {
+          if (!u.progress) u.progress = { materi: 0, video: 0, lkpd: 0, latsol: 0, evaluasi: 0 };
+          u.progress.materi = 100;
+        }
+      });
+    }
+
+    return () => unsub();
+  }, []);
+
+  // Click outside to close dropdown
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const currentChapter: Material | undefined = materials[activeTab] || materials[0];
+
+  return (
+    <div className="space-y-8 max-w-5xl mx-auto pb-16 font-sans">
+      
+      {/* 1. Header Banner Pure Neobrutalism */}
+      <div className="relative rounded-3xl bg-[#38bdf8] border-4 border-slate-950 dark:border-slate-800 p-6 sm:p-8 shadow-[8px_8px_0px_0px_#0f172a] dark:shadow-[8px_8px_0px_0px_#000000] overflow-hidden text-slate-950">
+        <div className="absolute right-4 bottom-0 text-slate-950/10 font-black text-8xl pointer-events-none select-none">
+          MATERI
+        </div>
+
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6 relative z-10">
+          <div className="space-y-3 max-w-2xl">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="px-3 py-1 bg-white text-slate-950 border-2 border-slate-950 rounded-xl text-xs font-black shadow-[2px_2px_0px_0px_#0f172a]">
+                MODUL TEORI &amp; KONSEP DASAR
+              </span>
+              <span className="px-3 py-1 bg-white/90 text-slate-900 border-2 border-slate-950 rounded-xl text-xs font-bold">
+                Kurikulum Merdeka Kelas 7 SMP
+              </span>
+            </div>
+
+            <h1 className="text-2xl sm:text-4xl font-black tracking-tight text-slate-950 leading-tight">
+              Materi Pembelajaran Bilangan Pecahan
+            </h1>
+
+            <p className="text-xs sm:text-sm text-slate-950 max-w-2xl leading-relaxed font-bold">
+              Pelajari definisi formal, ragam bentuk pecahan, metode penyederhanaan FPB, serta operasi hitung berbasis KPK secara runtut, interaktif, dan visual.
+            </p>
+          </div>
+
+          <div className="w-16 h-16 rounded-2xl bg-[#ffe600] border-3 border-slate-950 text-slate-950 flex items-center justify-center shrink-0 shadow-[4px_4px_0px_0px_#0f172a]">
+            <BookOpen size={34} />
+          </div>
+        </div>
+      </div>
+
+      {/* 2. Interactive Chapter Dropdown Selector (with Chevron Icon) */}
+      <div className="relative z-30" ref={dropdownRef}>
+        <label className="block text-xs font-black uppercase tracking-wider text-slate-700 dark:text-slate-300 mb-2 flex items-center gap-2">
+          <Layers size={15} className="text-amber-500" />
+          <span>Pilih Bab / Materi Pembelajaran:</span>
+        </label>
+
+        {/* Dropdown Trigger Button */}
+        <button
+          type="button"
+          onClick={() => {
+            soundService.click();
+            setIsDropdownOpen(prev => !prev);
+          }}
+          className={"w-full p-4 sm:p-5 rounded-2xl border-4 border-slate-950 dark:border-slate-700 transition-all flex items-center justify-between gap-4 cursor-pointer text-left " + (
+            isDropdownOpen
+              ? 'bg-[#ffe600] text-slate-950 shadow-[6px_6px_0px_0px_#0f172a] -translate-x-0.5 -translate-y-0.5'
+              : 'bg-white dark:bg-[#111827] text-slate-900 dark:text-slate-100 shadow-[5px_5px_0px_0px_#0f172a] dark:shadow-[5px_5px_0px_0px_#000000] hover:bg-amber-50/70 dark:hover:bg-slate-800/80'
+          )}
+        >
+          <div className="flex items-center gap-3.5 min-w-0">
+            <div className="min-w-0">
+              <div className="flex items-center gap-2 flex-wrap mb-1">
+                <span className="px-2.5 py-0.5 rounded-md bg-[#a3e635] text-slate-950 border border-slate-950 text-xs font-black shadow-[1px_1px_0px_0px_#0f172a]">
+                  {currentChapter?.chapterCode || `BAB 1.${activeTab + 1}`}
+                </span>
+                <span className="text-xs font-bold text-slate-600 dark:text-slate-300">
+                  {currentChapter?.badge || 'Modul Pembelajaran'}
+                </span>
+              </div>
+              <h3 className="font-black text-sm sm:text-base text-slate-950 dark:text-slate-100 truncate">
+                {currentChapter?.title || 'Pilih Materi...'}
+              </h3>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2.5 shrink-0">
+            <span className="hidden sm:inline-block px-3 py-1 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 border-2 border-slate-950 dark:border-slate-600 text-xs font-black">
+              {materials.length} Bab Tersedia
+            </span>
+            <div className={"w-9 h-9 rounded-xl border-2 border-slate-950 flex items-center justify-center transition-transform duration-200 " + (
+              isDropdownOpen ? 'bg-slate-950 text-white rotate-180 shadow-none' : 'bg-white dark:bg-slate-800 text-slate-950 dark:text-slate-100 shadow-[2px_2px_0px_0px_#0f172a]'
+            )}>
+              <ChevronDown size={20} strokeWidth={3} />
+            </div>
+          </div>
+        </button>
+
+        {/* Dropdown Options Menu */}
+        {isDropdownOpen && (
+          <div className="absolute left-0 right-0 top-full mt-2 bg-white dark:bg-[#111827] border-4 border-slate-950 dark:border-slate-700 rounded-2xl shadow-[8px_8px_0px_0px_#0f172a] dark:shadow-[8px_8px_0px_0px_#000000] overflow-hidden divide-y-2 divide-slate-200 dark:divide-slate-800 max-h-[380px] overflow-y-auto animate-in fade-in slide-in-from-top-2 duration-150">
+            {materials.map((m, idx) => {
+              const isSelected = activeTab === idx;
+              return (
+                <button
+                  key={m.id || idx}
+                  type="button"
+                  onClick={() => {
+                    soundService.click();
+                    setActiveTab(idx);
+                    setIsDropdownOpen(false);
+                  }}
+                  className={"w-full p-3.5 sm:p-4 text-left flex items-center justify-between gap-3 transition-colors cursor-pointer " + (
+                    isSelected
+                      ? 'bg-amber-100/80 dark:bg-amber-950/40 text-slate-950 dark:text-slate-100 font-black'
+                      : 'hover:bg-slate-50 dark:hover:bg-slate-800/60 text-slate-800 dark:text-slate-200'
+                  )}
+                >
+                  <div className="flex items-center gap-3 min-w-0">
+                    <span className={"w-8 h-8 rounded-lg flex items-center justify-center shrink-0 text-xs font-black border-2 border-slate-950 " + (
+                      isSelected
+                        ? 'bg-[#ffe600] text-slate-950 shadow-[1.5px_1.5px_0px_0px_#0f172a]'
+                        : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300'
+                    )}>
+                      {idx + 1}
+                    </span>
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="px-2 py-0.5 rounded bg-slate-200 dark:bg-slate-800 text-slate-900 dark:text-slate-100 border border-slate-950 text-[10px] font-black">
+                          {m.chapterCode || `BAB 1.${idx + 1}`}
+                        </span>
+                        <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400">
+                          {m.badge || 'Modul'}
+                        </span>
+                      </div>
+                      <p className="font-black text-xs sm:text-sm text-slate-950 dark:text-slate-100 truncate mt-0.5">
+                        {m.title}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2 shrink-0">
+                    {isSelected ? (
+                      <div className="w-6 h-6 rounded-full bg-[#a3e635] border-2 border-slate-950 flex items-center justify-center text-slate-950 shadow-[1px_1px_0px_0px_#0f172a]">
+                        <Check size={14} strokeWidth={3} />
+                      </div>
+                    ) : (
+                      <span className="text-xs font-bold text-slate-400 dark:text-slate-500">
+                        Buka Bab
+                      </span>
+                    )}
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* 3. Main Chapter Card */}
+      {currentChapter && (
+        <div className="rounded-3xl bg-white dark:bg-[#111827] border-4 border-slate-950 dark:border-slate-800 p-6 sm:p-8 shadow-[8px_8px_0px_0px_#0f172a] dark:shadow-[8px_8px_0px_0px_#000000] space-y-6">
+          
+          {/* Chapter Title, Badges & Summary */}
+          <div className="space-y-3 pb-5 border-b-3 border-slate-950/15 dark:border-slate-800">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="px-3 py-1 rounded-xl bg-[#a3e635] text-slate-950 font-black text-xs border-2 border-slate-950 shadow-[1.5px_1.5px_0px_0px_#0f172a]">
+                {currentChapter.chapterCode || ("BAB 1." + (activeTab + 1))}
+              </span>
+              <span className="px-3 py-1 rounded-xl bg-[#ffe600] text-slate-950 font-black text-xs border-2 border-slate-950">
+                {currentChapter.badge || 'Teori Inti'}
+              </span>
+              {currentChapter.fileName && (
+                <span className="px-2.5 py-0.5 rounded-lg bg-rose-100 text-rose-950 border border-slate-950 text-[11px] font-black flex items-center gap-1">
+                  <FileText size={12} /> Modul Terlampir
+                </span>
+              )}
+            </div>
+
+            <h2 className="text-xl sm:text-2xl lg:text-3xl font-black text-slate-950 dark:text-slate-100 leading-tight">
+              {currentChapter.title}
+            </h2>
+
+            {currentChapter.summary && (
+              <p className="text-xs sm:text-sm font-bold text-slate-700 dark:text-slate-300 leading-relaxed bg-amber-50/70 dark:bg-slate-800/60 p-3.5 rounded-2xl border border-slate-950/20">
+                {currentChapter.summary}
+              </p>
+            )}
+          </div>
+
+          {/* Uraian Teori & Penjelasan Konsep */}
+          {currentChapter.content && (
+            <div className="p-5 sm:p-6 rounded-2xl bg-slate-50 dark:bg-slate-900/60 border-3 border-slate-950 dark:border-slate-700 shadow-[3px_3px_0px_0px_#0f172a] space-y-2">
+              <div className="flex items-center gap-2 text-xs font-black uppercase tracking-wider text-slate-950 dark:text-slate-100">
+                <GraduationCap size={16} className="text-[#38bdf8]" />
+                <span>Uraian Penjelasan Konsep:</span>
+              </div>
+              <div className="text-xs sm:text-sm font-bold text-slate-800 dark:text-slate-200 leading-relaxed whitespace-pre-line">
+                {renderFormattedMathText(currentChapter.content, 'sm')}
+              </div>
+            </div>
+          )}
+
+          {/* Formula / Concept Rule Box */}
+          {currentChapter.formula && (
+            <div className="p-5 rounded-2xl bg-[#fffdf5] dark:bg-amber-950/20 border-3 border-slate-950 dark:border-slate-700 shadow-[4px_4px_0px_0px_#0f172a] space-y-3">
+              <div className="flex items-center gap-2 text-xs font-black uppercase tracking-wider text-slate-950 dark:text-slate-100">
+                <Lightbulb size={16} className="text-amber-500" />
+                <span>Rumus &amp; Kaidah Matematis:</span>
+              </div>
+
+              <div className="p-4 rounded-xl bg-white dark:bg-slate-900 border-2 border-slate-950 dark:border-slate-700 overflow-x-auto shadow-inner">
+                <div className="text-sm sm:text-base font-black text-slate-950 dark:text-slate-100">
+                  {renderFormattedMathText(currentChapter.formula, 'md')}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Concrete Example Box */}
+          {currentChapter.exampleCase && (
+            <div className="p-5 rounded-2xl bg-[#e0f2fe] dark:bg-sky-950/40 border-3 border-slate-950 dark:border-slate-700 shadow-[4px_4px_0px_0px_#0f172a] space-y-3">
+              <div className="flex items-center gap-2 text-xs font-black uppercase tracking-wider text-slate-950 dark:text-slate-100">
+                <CheckCircle2 size={16} className="text-sky-600 dark:text-sky-400" />
+                <span>Contoh Kasus &amp; Penyelesaian:</span>
+              </div>
+
+              <div className="p-4 rounded-xl bg-white dark:bg-slate-900 border-2 border-slate-950 dark:border-slate-700 leading-relaxed">
+                <div className="text-xs sm:text-sm font-bold text-slate-950 dark:text-slate-100">
+                  {renderFormattedMathText(currentChapter.exampleCase, 'sm')}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Dedicated File Attachment for THIS chapter */}
+          {(currentChapter.fileName || currentChapter.fileUrl) && (
+            <div className="p-5 sm:p-6 rounded-2xl bg-[#fdf4ff] dark:bg-purple-950/30 border-3 border-slate-950 dark:border-slate-700 shadow-[4px_4px_0px_0px_#0f172a] space-y-4">
+              <div className="flex items-center justify-between gap-2 flex-wrap">
+                <div className="flex items-center gap-2.5">
+                  <div className="p-2 rounded-xl bg-purple-200 border-2 border-slate-950 text-slate-950 shadow-[1.5px_1.5px_0px_0px_#0f172a]">
+                    <FileText size={18} />
+                  </div>
+                  <div>
+                    <h3 className="text-xs sm:text-sm font-black text-slate-950 dark:text-slate-100">
+                      Lampiran Berkas Pendukung Bab Ini
+                    </h3>
+                    <p className="text-[11px] font-bold text-slate-600 dark:text-slate-400">
+                      Materi dan berkas referensi khusus {currentChapter.chapterCode || 'bab ini'}
+                    </p>
+                  </div>
+                </div>
+
+                <span className="px-2.5 py-1 rounded-lg bg-purple-200 text-purple-950 border border-slate-950 text-[10px] font-black">
+                  {currentChapter.fileSize || 'Berkas Terlampir'}
+                </span>
+              </div>
+
+              <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border-2 border-slate-950 dark:border-slate-700 shadow-[2px_2px_0px_0px_#0f172a] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="w-10 h-10 rounded-xl bg-amber-200 border-2 border-slate-950 flex items-center justify-center shrink-0">
+                    <FileText size={20} className="text-rose-600" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-xs sm:text-sm font-black text-slate-950 dark:text-slate-100 truncate max-w-[240px] sm:max-w-md">
+                      {currentChapter.fileName || (currentChapter.title + '.pdf')}
+                    </p>
+                    <p className="text-[11px] font-bold text-slate-500 dark:text-slate-400">
+                      Klik pratinjau untuk membuka lembar modul
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => setPreviewItem({
+                      title: currentChapter.title,
+                      url: currentChapter.fileUrl,
+                      type: 'pdf',
+                      name: currentChapter.fileName,
+                      chapterCode: currentChapter.chapterCode,
+                      badge: currentChapter.badge,
+                      summary: currentChapter.summary,
+                      content: currentChapter.content,
+                      formula: currentChapter.formula,
+                      exampleCase: currentChapter.exampleCase,
+                      fileSize: currentChapter.fileSize
+                    })}
+                    className="px-3.5 py-1.5 rounded-xl bg-white dark:bg-slate-800 hover:bg-slate-100 text-slate-950 dark:text-slate-100 border-2 border-slate-950 text-xs font-black shadow-[2px_2px_0px_0px_#0f172a] flex items-center gap-1.5 cursor-pointer active:translate-x-0.5 active:translate-y-0.5 transition-all"
+                  >
+                    <Eye size={13} />
+                    <span>Pratinjau Modul</span>
+                  </button>
+
+                  {currentChapter.fileUrl && (
+                    <a
+                      href={currentChapter.fileUrl}
+                      download={currentChapter.fileName || (currentChapter.title + '.pdf')}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="px-3.5 py-1.5 rounded-xl bg-[#ffe600] hover:bg-yellow-400 text-slate-950 border-2 border-slate-950 text-xs font-black shadow-[2px_2px_0px_0px_#0f172a] flex items-center gap-1.5 cursor-pointer active:translate-x-0.5 active:translate-y-0.5 transition-all"
+                    >
+                      <Download size={13} />
+                      <span>Unduh</span>
+                    </a>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Chapter Navigation Bar */}
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-5 border-t-3 border-slate-950/15 dark:border-slate-800">
+            <div className="flex items-center gap-2 w-full sm:w-auto">
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={activeTab === 0}
+                onClick={() => {
+                  soundService.click();
+                  setActiveTab(prev => Math.max(0, prev - 1));
+                }}
+                className="flex-1 sm:flex-initial font-black text-xs"
+              >
+                <ArrowLeft size={14} />
+                <span>Bab Sebelumnya</span>
+              </Button>
+
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={activeTab >= materials.length - 1}
+                onClick={() => {
+                  soundService.click();
+                  setActiveTab(prev => Math.min(materials.length - 1, prev + 1));
+                }}
+                className="flex-1 sm:flex-initial font-black text-xs"
+              >
+                <span>Bab Selanjutnya</span>
+                <ArrowRight size={14} />
+              </Button>
+            </div>
+
+            <div className="flex items-center gap-2 w-full sm:w-auto">
+              <Button
+                variant="secondary"
+                size="sm"
+                className="flex-1 sm:flex-initial font-black text-xs"
+                onClick={() => onNavigate('siswa/studio')}
+              >
+                <PieChart size={15} />
+                <span>Studio Pizza</span>
+              </Button>
+
+              <Button
+                variant="yellow"
+                size="sm"
+                className="flex-1 sm:flex-initial font-black text-xs"
+                onClick={() => onNavigate('siswa/lkpd')}
+              >
+                <span>LKPD</span>
+                <ArrowRight size={15} />
+              </Button>
+            </div>
+          </div>
+
+        </div>
+      )}
+
+      {/* Lightbox / Document Preview Modal */}
+      <DocumentPreviewModal
+        item={previewItem}
+        onClose={() => setPreviewItem(null)}
+      />
+
+    </div>
+  );
+};
+
+export default SiswaMateri;
